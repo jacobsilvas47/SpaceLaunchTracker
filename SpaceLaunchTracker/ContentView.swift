@@ -1,21 +1,18 @@
-//
-//  ContentView.swift
-//  SpaceLaunchTracker
-//
-//  Created by Jacob Silvas on 5/31/26.
-//
-
 import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        TabView {
+            LaunchListView()
+                .tabItem {
+                    Label("Launches", systemImage: "rocket")
+                }
+
+            FavoritesView()
+                .tabItem {
+                    Label("Favorites", systemImage: "star.fill")
+                }
         }
-        .padding()
     }
 }
 

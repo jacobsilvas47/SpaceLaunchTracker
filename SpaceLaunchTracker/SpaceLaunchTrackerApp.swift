@@ -1,11 +1,5 @@
-//
-//  SpaceLaunchTrackerApp.swift
-//  SpaceLaunchTracker
-//
-//  Created by Jacob Silvas on 5/31/26.
-//
-
 import SwiftUI
+import SwiftData
 
 @main
 struct SpaceLaunchTrackerApp: App {
@@ -13,5 +7,6 @@ struct SpaceLaunchTrackerApp: App {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(for: FavoriteLaunch.self)
     }
 }
