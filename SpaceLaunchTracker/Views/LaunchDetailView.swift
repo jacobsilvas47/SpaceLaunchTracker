@@ -7,6 +7,9 @@ struct LaunchDetailView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Query private var favorites: [FavoriteLaunch]
+    
+    @State private var showingNotificationOptions = false
+    @State private var selectedNotificationOffsets: Set<NotificationOffset> = []
 
     private var isFavorite: Bool {
         favorites.contains { $0.id == launch.id }
@@ -56,9 +59,56 @@ struct LaunchDetailView: View {
                     )
                 }
             }
+            
+            Section("Notifications") {
+                Button {
+                    showingNotificationOptions = true
+                } label: {
+                    Label("Notify Me", systemImage: "bell")
+                }
+            }
         }
         .navigationTitle("Launch Details")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingNotificationOptions) {
+            NavigationStack {
+                List {
+                    ForEach(NotificationOffset.allCases, id: \.self) { offset in
+                        Button {
+                            if selectedNotificationOffsets.contains(offset) {
+                                selectedNotificationOffsets.remove(offset)
+                            } else {
+                                selectedNotificationOffsets.insert(offset)
+
+                                NotificationManager.shared.scheduleNotification(
+                                    for: launch,
+                                    offset: offset
+                                )
+                            }
+                        } label: {
+                            HStack {
+                                Text(offset.rawValue)
+
+                                Spacer()
+
+                                if selectedNotificationOffsets.contains(offset) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.blue)
+                                }
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Notify Me")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") {
+                            showingNotificationOptions = false
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private func toggleFavorite() {
