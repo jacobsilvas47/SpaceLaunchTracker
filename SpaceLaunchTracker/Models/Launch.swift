@@ -30,6 +30,12 @@ struct LaunchStatus: Codable {
 
 struct LaunchServiceProvider: Codable {
     let name: String
+    let logoUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case logoUrl = "logo_url"
+    }
 }
 
 struct Rocket: Codable {

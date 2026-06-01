@@ -1,10 +1,14 @@
 import SwiftUI
+import SwiftData
 
 struct LaunchListView: View {
     
     @StateObject private var viewModel = LaunchListViewModel()
     @State private var searchText = ""
     @State private var selectedLocation = "All"
+    
+    @Environment(\.modelContext) private var modelContext
+    @Query private var favorites: [FavoriteLaunch]
     
     private let locations = [
         "All",
@@ -15,18 +19,43 @@ struct LaunchListView: View {
     ]
     
     private var filteredLaunches: [Launch] {
-        
-        if searchText.isEmpty {
-            return viewModel.launches
-        }
-        
-        return viewModel.launches.filter { launch in
-            
+
+        viewModel.launches.filter { launch in
+
+            let matchesSearch =
+            searchText.isEmpty ||
             launch.name.localizedCaseInsensitiveContains(searchText) ||
             (launch.rocket?.configuration?.name.localizedCaseInsensitiveContains(searchText) ?? false) ||
             (launch.launchServiceProvider?.name.localizedCaseInsensitiveContains(searchText) ?? false) ||
             (launch.pad?.location?.name?.localizedCaseInsensitiveContains(searchText) ?? false) ||
             (launch.status?.name.localizedCaseInsensitiveContains(searchText) ?? false)
+
+            let matchesLocation =
+            selectedLocation == "All" ||
+            (launch.pad?.location?.name?.localizedCaseInsensitiveContains(selectedLocation) ?? false)
+
+            return matchesSearch && matchesLocation
+        }
+    }
+    
+    private func isFavorite(_ launch: Launch) -> Bool {
+        favorites.contains { $0.id == launch.id }
+    }
+
+    private func toggleFavorite(_ launch: Launch) {
+        if let existingFavorite = favorites.first(where: { $0.id == launch.id }) {
+            modelContext.delete(existingFavorite)
+        } else {
+            let favorite = FavoriteLaunch(
+                id: launch.id,
+                name: launch.name,
+                rocketName: launch.rocket?.configuration?.name ?? "Unknown Rocket",
+                providerName: launch.launchServiceProvider?.name ?? "Unknown Provider",
+                locationName: launch.pad?.location?.name ?? "Unknown Location",
+                launchDate: launch.net
+            )
+
+            modelContext.insert(favorite)
         }
     }
     
@@ -52,30 +81,53 @@ struct LaunchListView: View {
                             LaunchDetailView(launch: launch)
                         } label: {
                             
-                            VStack(alignment: .leading, spacing: 6) {
-                                
-                                Text(launch.name)
-                                    .font(.headline)
-                                
-                                Text(launch.rocket?.configuration?.name ?? "Unknown Rocket")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                
-                                Text(launch.launchServiceProvider?.name ?? "Unknown Provider")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                
-                                Text(launch.pad?.location?.name ?? "Unknown Location")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                
-                                Text(
-                                    DateFormatterHelper.formattedDate(
-                                        from: launch.net
+                            HStack(spacing: 12) {
+                                AsyncImage(url: URL(string: launch.launchServiceProvider?.logoUrl ?? "")) { image in
+                                    image
+                                        .resizable()
+                                        .scaledToFit()
+                                } placeholder: {
+                                    Image(systemName: "paperplane.circle.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(width: 36, height: 36)
+
+                                VStack(alignment: .leading, spacing: 6) {
+
+                                    Text(launch.name)
+                                        .font(.headline)
+
+                                    Text(launch.rocket?.configuration?.name ?? "Unknown Rocket")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+
+                                    Text(launch.launchServiceProvider?.name ?? "Unknown Provider")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+
+                                    Text(launch.pad?.location?.name ?? "Unknown Location")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+
+                                    Text(
+                                        DateFormatterHelper.formattedDate(
+                                            from: launch.net
+                                        )
                                     )
-                                )
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+
+                                Button {
+                                    toggleFavorite(launch)
+                                } label: {
+                                    Image(systemName: isFavorite(launch) ? "star.fill" : "star")
+                                        .font(.title3)
+                                }
+                                .buttonStyle(.plain)
                             }
                             .padding(.vertical, 4)
                         }

@@ -5,7 +5,7 @@ struct ContentView: View {
         TabView {
             LaunchListView()
                 .tabItem {
-                    Label("Launches", systemImage: "rocket")
+                    Label("Launches", systemImage: "paperplane.fill")
                 }
 
             FavoritesView()

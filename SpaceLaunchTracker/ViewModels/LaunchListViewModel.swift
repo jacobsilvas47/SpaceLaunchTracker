@@ -22,6 +22,10 @@ final class LaunchListViewModel: ObservableObject {
             print("Loaded launches:")
             print(launches.count)
 
+        } catch is CancellationError {
+
+            print("Request was cancelled")
+
         } catch {
 
             errorMessage = error.localizedDescription
