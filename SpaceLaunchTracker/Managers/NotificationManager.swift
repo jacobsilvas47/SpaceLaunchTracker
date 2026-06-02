@@ -73,4 +73,43 @@ final class NotificationManager {
             }
         }
     }
+    
+    func cancelNotification(
+        for launch: Launch,
+        offset: NotificationOffset
+    ) {
+        let identifier = "\(launch.id)-\(offset.rawValue)"
+
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(
+                withIdentifiers: [identifier]
+            )
+
+        print("Notification cancelled:")
+        print(launch.name)
+        print(offset.rawValue)
+    }
+
+    func getScheduledOffsets(
+        for launch: Launch,
+        completion: @escaping (Set<NotificationOffset>) -> Void
+    ) {
+        UNUserNotificationCenter.current()
+            .getPendingNotificationRequests { requests in
+
+                let scheduledOffsets = requests.compactMap { request -> NotificationOffset? in
+                    for offset in NotificationOffset.allCases {
+                        let identifier = "\(launch.id)-\(offset.rawValue)"
+
+                        if request.identifier == identifier {
+                            return offset
+                        }
+                    }
+
+                    return nil
+                }
+
+                completion(Set(scheduledOffsets))
+            }
+    }
 }

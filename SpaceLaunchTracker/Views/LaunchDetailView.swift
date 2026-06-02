@@ -104,7 +104,12 @@ struct LaunchDetailView: View {
             
             Section("Notifications") {
                 Button {
-                    showingNotificationOptions = true
+                    NotificationManager.shared.getScheduledOffsets(for: launch) { offsets in
+                        DispatchQueue.main.async {
+                            selectedNotificationOffsets = offsets
+                            showingNotificationOptions = true
+                        }
+                    }
                 } label: {
                     Label("Notify Me", systemImage: "bell")
                 }
@@ -115,73 +120,107 @@ struct LaunchDetailView: View {
         .onReceive(timer) { date in
             currentDate = date
         }
+        .onAppear {
+            NotificationManager.shared.getScheduledOffsets(for: launch) { offsets in
+                DispatchQueue.main.async {
+                    selectedNotificationOffsets = offsets
+                }
+            }
+        }
         .sheet(isPresented: $showingNotificationOptions) {
-            NavigationStack {
-                List {
-                    ForEach(NotificationOffset.allCases, id: \.self) { offset in
-                        Button {
-                            if selectedNotificationOffsets.contains(offset) {
-                                selectedNotificationOffsets.remove(offset)
-                            } else {
-                                selectedNotificationOffsets.insert(offset)
+            NotificationOptionsView(
+                launch: launch,
+                selectedNotificationOffsets: $selectedNotificationOffsets
+            )
+        }
+        }
 
-                                NotificationManager.shared.scheduleNotification(
-                                    for: launch,
-                                    offset: offset
-                                )
-                            }
-                        } label: {
-                            HStack {
-                                Text(offset.rawValue)
+        private func toggleFavorite() {
+            if let existingFavorite = favorites.first(where: { $0.id == launch.id }) {
+                modelContext.delete(existingFavorite)
+            } else {
+                let favorite = FavoriteLaunch(
+                    id: launch.id,
+                    name: launch.name,
+                    rocketName: launch.rocket?.configuration?.name ?? "Unknown Rocket",
+                    providerName: launch.launchServiceProvider?.name ?? "Unknown Provider",
+                    locationName: launch.pad?.location?.name ?? "Unknown Location",
+                    launchDate: launch.net
+                )
 
-                                Spacer()
+                modelContext.insert(favorite)
+            }
+        }
 
+        private func detailRow(_ title: String, _ value: String) -> some View {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(value)
+                    .font(.body)
+            }
+            .padding(.vertical, 4)
+        }
+        }
+
+        private struct NotificationOptionsView: View {
+
+            let launch: Launch
+            @Binding var selectedNotificationOffsets: Set<NotificationOffset>
+
+            @Environment(\.dismiss) private var dismiss
+
+            var body: some View {
+                NavigationStack {
+                    List {
+                        ForEach(NotificationOffset.allCases, id: \.self) { offset in
+                            Button {
                                 if selectedNotificationOffsets.contains(offset) {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(.blue)
+                                    selectedNotificationOffsets.remove(offset)
+
+                                    NotificationManager.shared.cancelNotification(
+                                        for: launch,
+                                        offset: offset
+                                    )
+                                } else {
+                                    selectedNotificationOffsets.insert(offset)
+
+                                    NotificationManager.shared.scheduleNotification(
+                                        for: launch,
+                                        offset: offset
+                                    )
+                                }
+                            } label: {
+                                HStack {
+                                    Text(offset.rawValue)
+
+                                    Spacer()
+
+                                    if selectedNotificationOffsets.contains(offset) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.blue)
+                                    }
                                 }
                             }
                         }
                     }
+                    .navigationTitle("Notify Me")
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") {
+                                dismiss()
+                            }
+                        }
+                    }
                 }
-                .navigationTitle("Notify Me")
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Done") {
-                            showingNotificationOptions = false
+                .onAppear {
+                    NotificationManager.shared.getScheduledOffsets(for: launch) { offsets in
+                        DispatchQueue.main.async {
+                            selectedNotificationOffsets = offsets
                         }
                     }
                 }
             }
         }
-    }
-
-    private func toggleFavorite() {
-        if let existingFavorite = favorites.first(where: { $0.id == launch.id }) {
-            modelContext.delete(existingFavorite)
-        } else {
-            let favorite = FavoriteLaunch(
-                id: launch.id,
-                name: launch.name,
-                rocketName: launch.rocket?.configuration?.name ?? "Unknown Rocket",
-                providerName: launch.launchServiceProvider?.name ?? "Unknown Provider",
-                locationName: launch.pad?.location?.name ?? "Unknown Location",
-                launchDate: launch.net
-            )
-
-            modelContext.insert(favorite)
-        }
-    }
-
-    private func detailRow(_ title: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Text(value)
-                .font(.body)
-        }
-        .padding(.vertical, 4)
-    }
-}
