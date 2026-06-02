@@ -2,7 +2,10 @@ import Foundation
 
 enum CountdownHelper {
     
-    static func countdownText(from dateString: String) -> String {
+    static func countdownText(
+        from dateString: String,
+        currentDate: Date = Date()
+    ) -> String {
         
         let formatter = ISO8601DateFormatter()
         
@@ -10,15 +13,13 @@ enum CountdownHelper {
             return "Countdown unavailable"
         }
         
-        let now = Date()
-        
-        if launchDate <= now {
+        if launchDate <= currentDate {
             return "Launched"
         }
         
         let components = Calendar.current.dateComponents(
             [.day, .hour, .minute],
-            from: now,
+            from: currentDate,
             to: launchDate
         )
         
@@ -27,7 +28,7 @@ enum CountdownHelper {
         let minutes = components.minute ?? 0
         
         if days > 0 {
-            return "T-\(days)d \(hours)h"
+            return "T-\(days)d \(hours)h \(minutes)m"
         } else if hours > 0 {
             return "T-\(hours)h \(minutes)m"
         } else {

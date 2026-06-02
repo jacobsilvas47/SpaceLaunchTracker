@@ -12,6 +12,9 @@ struct Launch: Codable, Identifiable {
     let launchServiceProvider: LaunchServiceProvider?
     let rocket: Rocket?
     let pad: LaunchPad?
+    
+    let image: String?
+    let infographic: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -21,6 +24,8 @@ struct Launch: Codable, Identifiable {
         case launchServiceProvider = "launch_service_provider"
         case rocket
         case pad
+        case image
+        case infographic
     }
 }
 

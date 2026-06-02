@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Combine
 
 struct LaunchDetailView: View {
 
@@ -10,6 +11,14 @@ struct LaunchDetailView: View {
     
     @State private var showingNotificationOptions = false
     @State private var selectedNotificationOffsets: Set<NotificationOffset> = []
+    
+    @State private var currentDate = Date()
+
+    private let timer = Timer.publish(
+        every: 60,
+        on: .main,
+        in: .common
+    ).autoconnect()
 
     private var isFavorite: Bool {
         favorites.contains { $0.id == launch.id }
@@ -18,6 +27,36 @@ struct LaunchDetailView: View {
     var body: some View {
 
         List {
+            
+            if let imageUrl = launch.image,
+               let url = URL(string: imageUrl) {
+                
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                        
+                    case .failure(_):
+                        Image(systemName: "paperplane.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundStyle(.secondary)
+                        
+                    default:
+                        ProgressView()
+                    }
+                }
+                .frame(height: 240)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(.quaternary)
+                }
+                .shadow(radius: 4)
+                .listRowInsets(EdgeInsets())
+                .padding(.vertical, 8)
+            }
 
             Section("Mission") {
                 detailRow("Mission Name", launch.name)
@@ -45,7 +84,10 @@ struct LaunchDetailView: View {
 
                 detailRow(
                     "Countdown",
-                    CountdownHelper.countdownText(from: launch.net)
+                    CountdownHelper.countdownText(
+                        from: launch.net,
+                        currentDate: currentDate
+                    )
                 )
             }
 
@@ -70,6 +112,9 @@ struct LaunchDetailView: View {
         }
         .navigationTitle("Launch Details")
         .navigationBarTitleDisplayMode(.inline)
+        .onReceive(timer) { date in
+            currentDate = date
+        }
         .sheet(isPresented: $showingNotificationOptions) {
             NavigationStack {
                 List {
