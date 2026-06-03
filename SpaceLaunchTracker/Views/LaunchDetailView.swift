@@ -8,10 +8,9 @@ struct LaunchDetailView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Query private var favorites: [FavoriteLaunch]
-    
+
     @State private var showingNotificationOptions = false
     @State private var selectedNotificationOffsets: Set<NotificationOffset> = []
-    
     @State private var currentDate = Date()
 
     private let timer = Timer.publish(
@@ -25,38 +24,8 @@ struct LaunchDetailView: View {
     }
 
     var body: some View {
-
         List {
-            
-            if let imageUrl = launch.image,
-               let url = URL(string: imageUrl) {
-                
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                        
-                    case .failure(_):
-                        Image(systemName: "paperplane.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundStyle(.secondary)
-                        
-                    default:
-                        ProgressView()
-                    }
-                }
-                .frame(height: 240)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(.quaternary)
-                }
-                .shadow(radius: 4)
-                .listRowInsets(EdgeInsets())
-                .padding(.vertical, 8)
-            }
+            launchImageSection
 
             Section("Mission") {
                 detailRow("Mission Name", launch.name)
@@ -65,23 +34,10 @@ struct LaunchDetailView: View {
             }
 
             Section("Launch Info") {
-                detailRow(
-                    "Launch Date",
-                    DateFormatterHelper.formattedDate(from: launch.net)
-                )
-
+                detailRow("Launch Date", DateFormatterHelper.formattedDate(from: launch.net))
                 detailRow("Status", launch.status?.name ?? "Unknown Status")
-
-                detailRow(
-                    "Location",
-                    launch.pad?.location?.name ?? "Unknown Location"
-                )
-
-                detailRow(
-                    "Launch Pad",
-                    launch.pad?.name ?? "Unknown Pad"
-                )
-
+                detailRow("Location", launch.pad?.location?.name ?? "Unknown Location")
+                detailRow("Launch Pad", launch.pad?.name ?? "Unknown Pad")
                 detailRow(
                     "Countdown",
                     CountdownHelper.countdownText(
@@ -101,7 +57,7 @@ struct LaunchDetailView: View {
                     )
                 }
             }
-            
+
             Section("Notifications") {
                 Button {
                     NotificationManager.shared.getScheduledOffsets(for: launch) { offsets in
@@ -133,94 +89,81 @@ struct LaunchDetailView: View {
                 selectedNotificationOffsets: $selectedNotificationOffsets
             )
         }
-        }
+    }
 
-        private func toggleFavorite() {
-            if let existingFavorite = favorites.first(where: { $0.id == launch.id }) {
-                modelContext.delete(existingFavorite)
-            } else {
-                let favorite = FavoriteLaunch(
-                    id: launch.id,
-                    name: launch.name,
-                    rocketName: launch.rocket?.configuration?.name ?? "Unknown Rocket",
-                    providerName: launch.launchServiceProvider?.name ?? "Unknown Provider",
-                    locationName: launch.pad?.location?.name ?? "Unknown Location",
-                    launchDate: launch.net
-                )
+    @ViewBuilder
+    private var launchImageSection: some View {
+        if let imageUrl = launch.image,
+           let url = URL(string: imageUrl) {
 
-                modelContext.insert(favorite)
-            }
-        }
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
 
-        private func detailRow(_ title: String, _ value: String) -> some View {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                case .failure(_):
+                    Image(systemName: "paperplane.circle.fill")
+                        .font(.system(size: 50))
+                        .foregroundStyle(.secondary)
 
-                Text(value)
-                    .font(.body)
-            }
-            .padding(.vertical, 4)
-        }
-        }
-
-        private struct NotificationOptionsView: View {
-
-            let launch: Launch
-            @Binding var selectedNotificationOffsets: Set<NotificationOffset>
-
-            @Environment(\.dismiss) private var dismiss
-
-            var body: some View {
-                NavigationStack {
-                    List {
-                        ForEach(NotificationOffset.allCases, id: \.self) { offset in
-                            Button {
-                                if selectedNotificationOffsets.contains(offset) {
-                                    selectedNotificationOffsets.remove(offset)
-
-                                    NotificationManager.shared.cancelNotification(
-                                        for: launch,
-                                        offset: offset
-                                    )
-                                } else {
-                                    selectedNotificationOffsets.insert(offset)
-
-                                    NotificationManager.shared.scheduleNotification(
-                                        for: launch,
-                                        offset: offset
-                                    )
-                                }
-                            } label: {
-                                HStack {
-                                    Text(offset.rawValue)
-
-                                    Spacer()
-
-                                    if selectedNotificationOffsets.contains(offset) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(.blue)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .navigationTitle("Notify Me")
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") {
-                                dismiss()
-                            }
-                        }
-                    }
-                }
-                .onAppear {
-                    NotificationManager.shared.getScheduledOffsets(for: launch) { offsets in
-                        DispatchQueue.main.async {
-                            selectedNotificationOffsets = offsets
-                        }
-                    }
+                default:
+                    ProgressView()
                 }
             }
+            .frame(height: 240)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(.quaternary)
+            }
+            .shadow(radius: 4)
+            .listRowInsets(EdgeInsets())
+            .padding(.vertical, 8)
         }
+    }
+
+    private func toggleFavorite() {
+        print("Favorite button tapped")
+        print(launch.name)
+        print("Currently favorite:", isFavorite)
+        
+        if let existingFavorite = favorites.first(where: { $0.id == launch.id }) {
+            modelContext.delete(existingFavorite)
+        } else {
+            let favorite = FavoriteLaunch(
+                id: launch.id,
+                name: launch.name,
+                rocketName: launch.rocket?.configuration?.name ?? "Unknown Rocket",
+                providerName: launch.launchServiceProvider?.name ?? "Unknown Provider",
+                locationName: launch.pad?.location?.name ?? "Unknown Location",
+                launchDate: launch.net,
+                statusName: launch.status?.name ?? "Unknown Status",
+                launchPadName: launch.pad?.name ?? "Unknown Pad",
+                imageURL: launch.image ?? ""
+            )
+
+            modelContext.insert(favorite)
+        }
+
+        do {
+            try modelContext.save()
+        } catch {
+            print("Favorite save error:")
+            print(error)
+        }
+    }
+
+    private func detailRow(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text(value)
+                .font(.body)
+        }
+        .padding(.vertical, 4)
+    }
+}

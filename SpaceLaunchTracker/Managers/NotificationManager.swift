@@ -1,11 +1,56 @@
 import Foundation
 import UserNotifications
 
+struct ScheduledLaunchNotification: Identifiable {
+    let id: String
+    let launchId: String
+    let title: String
+    let launchDate: String
+    let offsets: [String]
+}
+
 final class NotificationManager {
 
     static let shared = NotificationManager()
 
     private init() { }
+    
+    func getAllScheduledNotifications(
+        completion: @escaping ([ScheduledLaunchNotification]) -> Void
+    ) {
+        UNUserNotificationCenter.current()
+            .getPendingNotificationRequests { requests in
+
+                let grouped = Dictionary(grouping: requests) { request in
+                    if let launchId = request.content.userInfo["launchId"] as? String {
+                        return launchId
+                    }
+
+                    for offset in NotificationOffset.allCases {
+                        let suffix = "-\(offset.rawValue)"
+
+                        if request.identifier.hasSuffix(suffix) {
+                            return String(request.identifier.dropLast(suffix.count))
+                        }
+                    }
+
+                    return request.identifier
+                }
+
+                let notifications = grouped.map { launchId, requests in
+                    ScheduledLaunchNotification(
+                        id: launchId,
+                        launchId: launchId,
+                        title: requests.first?.content.title ?? "Unknown Launch",
+                        launchDate: requests.first?.content.userInfo["launchDate"] as? String ?? "",
+                        offsets: requests.map { $0.content.body }.sorted()
+                    )
+                }
+                .sorted { $0.title < $1.title }
+
+                completion(notifications)
+            }
+    }
 
     func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(
@@ -45,6 +90,10 @@ final class NotificationManager {
         content.title = launch.name
         content.body = "Launch starts in \(offset.rawValue.lowercased())."
         content.sound = .default
+        content.userInfo = [
+            "launchId": launch.id,
+            "launchDate": launch.net
+        ]
 
         let triggerDate = Calendar.current.dateComponents(
             [.year, .month, .day, .hour, .minute],
@@ -88,6 +137,27 @@ final class NotificationManager {
         print("Notification cancelled:")
         print(launch.name)
         print(offset.rawValue)
+    }
+    
+    func cancelAllNotifications() {
+        UNUserNotificationCenter.current()
+            .removeAllPendingNotificationRequests()
+
+        print("All notifications cancelled")
+    }
+    
+    func cancelAllNotifications(for launch: Launch) {
+        let identifiers = NotificationOffset.allCases.map { offset in
+            "\(launch.id)-\(offset.rawValue)"
+        }
+
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(
+                withIdentifiers: identifiers
+            )
+
+        print("All notifications cancelled for:")
+        print(launch.name)
     }
 
     func getScheduledOffsets(

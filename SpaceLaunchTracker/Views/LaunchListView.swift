@@ -43,6 +43,10 @@ struct LaunchListView: View {
     }
 
     private func toggleFavorite(_ launch: Launch) {
+        print("Favorite button tapped")
+        print(launch.name)
+        print("Currently favorite:", isFavorite)
+        
         if let existingFavorite = favorites.first(where: { $0.id == launch.id }) {
             modelContext.delete(existingFavorite)
         } else {
@@ -52,10 +56,20 @@ struct LaunchListView: View {
                 rocketName: launch.rocket?.configuration?.name ?? "Unknown Rocket",
                 providerName: launch.launchServiceProvider?.name ?? "Unknown Provider",
                 locationName: launch.pad?.location?.name ?? "Unknown Location",
-                launchDate: launch.net
+                launchDate: launch.net,
+                statusName: launch.status?.name ?? "Unknown Status",
+                launchPadName: launch.pad?.name ?? "Unknown Pad",
+                imageURL: launch.image ?? ""
             )
 
             modelContext.insert(favorite)
+        }
+
+        do {
+            try modelContext.save()
+        } catch {
+            print("Favorite save error:")
+            print(error)
         }
     }
     
@@ -69,10 +83,9 @@ struct LaunchListView: View {
                     
                     ProgressView()
                     
-                } else if let error = viewModel.errorMessage {
-                    
+                } else if let error = viewModel.errorMessage,
+                          viewModel.launches.isEmpty {
                     Text(error)
-                    
                 } else {
 
                     List(filteredLaunches) { launch in
@@ -127,7 +140,7 @@ struct LaunchListView: View {
                                     Image(systemName: isFavorite(launch) ? "star.fill" : "star")
                                         .font(.title3)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.borderless)
                             }
                             .padding(.vertical, 4)
                         }
